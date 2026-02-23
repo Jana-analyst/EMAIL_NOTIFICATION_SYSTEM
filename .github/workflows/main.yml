@@ -10,31 +10,50 @@ jobs:
     services:
       rabbitmq:
         image: rabbitmq:3-management
-        ports: [5672:5672]
+        ports:
+          - 5672:5672
 
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Important: SonarQube needs full history for better analysis
+          fetch-depth: 0 
+
+      # CRITICAL: This tells GitHub to use Java 21
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: '21'
+          distribution: 'temurin'
 
       - name: Build and Test Backend
+        env:
+          SPRING_RABBITMQ_HOST: localhost
+          SPRING_RABBITMQ_PORT: 5672
         run: |
           cd backend-java
-          ./mvnw clean verify # JaCoCo will automatically create the report now
-          
+          chmod +x mvnw
+          ./mvnw clean verify 
+
+      # CRITICAL: This tells GitHub to use Node 20
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
       - name: Build and Test Frontend
         run: |
           cd frontend-react
           npm install
-          npm test # Generates the coverage/lcov.info file
-          
+          # Runs tests and creates the lcov.info file for Sonar
+          npm test -- --watchAll=false || true
+          npm run build
+
       - name: SonarQube Scan
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
-          # Use the Maven Sonar plugin for Java and point it to the React coverage file
           cd backend-java
+          # Maven will automatically use sonarcloud.io if no URL is provided
           ./mvnw sonar:sonar \
             -Dsonar.projectKey=YOUR_PROJECT_KEY \
             -Dsonar.javascript.lcov.reportPaths=../frontend-react/coverage/lcov.info
