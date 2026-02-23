@@ -3,6 +3,7 @@ name: Docker Build, Test, and Sonar Scan
 on:
   push:
     branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -18,7 +19,6 @@ jobs:
         with:
           fetch-depth: 0 
 
-      # CRITICAL: This tells GitHub to use Java 21
       - name: Set up JDK 21
         uses: actions/setup-java@v3
         with:
@@ -34,7 +34,6 @@ jobs:
           chmod +x mvnw
           ./mvnw clean verify 
 
-      # CRITICAL: This tells GitHub to use Node 20
       - name: Set up Node.js 20
         uses: actions/setup-node@v3
         with:
@@ -44,7 +43,7 @@ jobs:
         run: |
           cd frontend-react
           npm install
-          # Runs tests and creates the lcov.info file for Sonar
+          # Runs Vitest and creates the lcov file for Sonar
           npm test -- --watchAll=false || true
           npm run build
 
@@ -53,9 +52,9 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           cd backend-java
-          # We explicitly set the host to SonarCloud and provide your Project Key
+          # Using your specific 'cicd' project key and 'jana-analyst' org
           ./mvnw sonar:sonar \
             -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.projectKey=YOUR_PROJECT_KEY \
-            -Dsonar.organization=YOUR_ORGANIZATION_KEY \
+            -Dsonar.projectKey=cicd \
+            -Dsonar.organization=jana-analyst \
             -Dsonar.javascript.lcov.reportPaths=../frontend-react/coverage/lcov.info
