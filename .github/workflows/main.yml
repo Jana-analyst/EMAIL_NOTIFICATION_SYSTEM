@@ -1,53 +1,40 @@
-name: Docker Build and Test
+name: Docker Build, Test, and Sonar Scan
 
 on:
   push:
     branches: [ "main" ]
-  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
-    # Starts RabbitMQ so your backend integration tests pass!
     services:
       rabbitmq:
         image: rabbitmq:3-management
-        ports:
-          - 5672:5672
+        ports: [5672:5672]
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v3
         with:
-          java-version: '21'
-          distribution: 'temurin'
+          fetch-depth: 0 # Important: SonarQube needs full history for better analysis
 
       - name: Build and Test Backend
-        env:
-          SPRING_RABBITMQ_HOST: localhost
-          SPRING_RABBITMQ_PORT: 5672
         run: |
           cd backend-java
-          chmod +x mvnw
-          ./mvnw clean verify
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          # Updated to 20 to match your Vite requirements in the logs
-          node-version: '20'
-
+          ./mvnw clean verify # JaCoCo will automatically create the report now
+          
       - name: Build and Test Frontend
         run: |
           cd frontend-react
-          # Use --legacy-peer-deps if you still see engine warnings
           npm install
-          # Runs vitest once without hanging
-          npm run test -- --watchAll=false || npm run test -- --watch=false || true
-          npm run build
-
-      - name: Verify Docker Compose
-        run: docker compose build
+          npm test # Generates the coverage/lcov.info file
+          
+      - name: SonarQube Scan
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          # Use the Maven Sonar plugin for Java and point it to the React coverage file
+          cd backend-java
+          ./mvnw sonar:sonar \
+            -Dsonar.projectKey=YOUR_PROJECT_KEY \
+            -Dsonar.javascript.lcov.reportPaths=../frontend-react/coverage/lcov.info
