@@ -1,0 +1,18 @@
+# --- OS specific files ---
+.DS_Store
+.idea/
+.vscode/
+
+# --- Backend / Java ---
+**/target/
+**/*.jar
+**/*.class
+
+# --- Frontend / Node ---
+**/node_modules/
+**/dist/
+**/build/
+.env
+
+# --- Docker ---
+*.db
