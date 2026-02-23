@@ -1,5 +1,5 @@
 package com.example.CapStoneProject.ServiceIntegrationTest;
-import org.springframework.test.context.ActiveProfiles;
+
 import com.example.CapStoneProject.dto.request.CreateTemplateRequest;
 import com.example.CapStoneProject.dto.request.UpdateTemplateRequest;
 import com.example.CapStoneProject.dto.response.TemplateDetailsResponse;
@@ -23,33 +23,39 @@ import static org.junit.jupiter.api.Assertions.*;
 @Transactional
 class TemplateServiceIntegrationTest {
 
-    @Autowired
-    TemplateService templateService;
+    @Autowired TemplateService templateService;
+    @Autowired TemplateRepository templateRepository;
 
-    @Autowired
-    TemplateRepository templateRepository;
-
+    // ✅ CREATE + DB VALIDATION
     @Test
     void createTemplate_shouldPersistInDatabase() {
 
-        CreateTemplateRequest request =
-                new CreateTemplateRequest(
-                        "Welcome",
-                        "Hello {{name}}",
-                        "Body {{code}}"
-                );
+        String uniqueName = "Welcome-" + UUID.randomUUID();
+
+        CreateTemplateRequest request = new CreateTemplateRequest(
+                uniqueName,
+                "Hello {{name}}",
+                "Body {{code}}"
+        );
 
         TemplateListItemResponse response =
                 templateService.createTemplate(request);
 
         assertNotNull(response.getTemplateId());
+
+        EmailTemplate saved =
+                templateRepository.findById(response.getTemplateId())
+                        .orElseThrow();
+
+        assertEquals(uniqueName, saved.getName());
     }
 
+    // ✅ PLACEHOLDER EXTRACTION BRANCH
     @Test
     void getTemplateDetails_shouldExtractPlaceholders() {
 
         EmailTemplate template = new EmailTemplate(
-                "Test",
+                "Placeholders-" + UUID.randomUUID(),
                 "Hello {{user}}",
                 "Body {{token}}"
         );
@@ -62,11 +68,12 @@ class TemplateServiceIntegrationTest {
         assertEquals(2, details.getPlaceholders().size());
     }
 
+    // ✅ FULL UPDATE BRANCH
     @Test
     void updateTemplate_shouldUpdateFields() {
 
         EmailTemplate template = new EmailTemplate(
-                "Test2",
+                "Update-" + UUID.randomUUID(),
                 "Old Subject",
                 "Old Body"
         );
@@ -79,9 +86,57 @@ class TemplateServiceIntegrationTest {
         TemplateListItemResponse response =
                 templateService.updateTemplate(template.getId(), request);
 
-        assertNotNull(response);
+        EmailTemplate updated =
+                templateRepository.findById(template.getId())
+                        .orElseThrow();
+
+        assertEquals("New Subject", updated.getSubject());
+        assertEquals("New Body", updated.getBody());
     }
 
+    // ✅ PARTIAL UPDATE BRANCH (IMPORTANT FOR SONAR)
+    @Test
+    void updateTemplate_shouldUpdateSubjectOnly() {
+
+        EmailTemplate template = new EmailTemplate(
+                "Partial-" + UUID.randomUUID(),
+                "Old Subject",
+                "Old Body"
+        );
+
+        templateRepository.save(template);
+
+        UpdateTemplateRequest request =
+                new UpdateTemplateRequest("Only Subject", null);
+
+        templateService.updateTemplate(template.getId(), request);
+
+        EmailTemplate updated =
+                templateRepository.findById(template.getId())
+                        .orElseThrow();
+
+        assertEquals("Only Subject", updated.getSubject());
+        assertEquals("Old Body", updated.getBody());
+    }
+
+    // ✅ DELETE BRANCH (YOU WERE MISSING THIS)
+    @Test
+    void deleteTemplate_shouldRemoveFromDatabase() {
+
+        EmailTemplate template = new EmailTemplate(
+                "Delete-" + UUID.randomUUID(),
+                "Subject",
+                "Body"
+        );
+
+        templateRepository.save(template);
+
+        templateService.deleteTemplate(template.getId());
+
+        assertFalse(templateRepository.existsById(template.getId()));
+    }
+
+    // ✅ EXCEPTION BRANCH
     @Test
     void getTemplateDetails_shouldThrowWhenMissing() {
 
