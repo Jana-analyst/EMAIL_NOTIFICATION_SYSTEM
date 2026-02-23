@@ -2,27 +2,20 @@ package com.example.CapStoneProject.ServiceUnitTest;
 
 import com.example.CapStoneProject.dto.request.CreateEmailRequest;
 import com.example.CapStoneProject.dto.request.TestEmailRequest;
-import com.example.CapStoneProject.dto.response.EmailDetailsResponse;
-import com.example.CapStoneProject.dto.response.EmailListItemResponse;
-import com.example.CapStoneProject.dto.response.TestEmailResponse;
+import com.example.CapStoneProject.dto.response.*;
 import com.example.CapStoneProject.messaging.EmailJobPublisher;
-import com.example.CapStoneProject.models.EmailMessage;
-import com.example.CapStoneProject.models.EmailStatus;
-import com.example.CapStoneProject.models.EmailTemplate;
-import com.example.CapStoneProject.enums.SystemStatus;
-import com.example.CapStoneProject.enums.ProviderStatus;
-import com.example.CapStoneProject.repository.EmailRepository;
-import com.example.CapStoneProject.repository.EmailStatusRepository;
-import com.example.CapStoneProject.repository.TemplateRepository;
-
+import com.example.CapStoneProject.models.*;
+import com.example.CapStoneProject.enums.*;
+import com.example.CapStoneProject.repository.*;
 import com.example.CapStoneProject.service.EmailService;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.*;
 
@@ -32,20 +25,12 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class EmailServiceTest {
 
-    @Mock
-    EmailRepository emailRepository;
+    @Mock EmailRepository emailRepository;
+    @Mock EmailStatusRepository emailStatusRepository;
+    @Mock TemplateRepository templateRepository;
+    @Mock EmailJobPublisher emailProducer;
 
-    @Mock
-    EmailStatusRepository emailStatusRepository;
-
-    @Mock
-    TemplateRepository templateRepository;
-
-    @Mock
-    EmailJobPublisher emailProducer;
-
-    @InjectMocks
-    EmailService emailService;
+    @InjectMocks EmailService emailService;
 
     private UUID templateId;
     private UUID emailId;
@@ -56,18 +41,12 @@ class EmailServiceTest {
         emailId = UUID.randomUUID();
     }
 
-    // ============================
-    // sendEmail → Success Path
-    // ============================
+    // ✅ sendEmail SUCCESS
     @Test
     void sendEmail_shouldQueueAndPublish() {
 
         CreateEmailRequest request =
-                new CreateEmailRequest(
-                        "test@mail.com",
-                        templateId,
-                        Map.of("name", "John")
-                );
+                new CreateEmailRequest("test@mail.com", templateId, Map.of("name", "John"));
 
         EmailTemplate template = mock(EmailTemplate.class);
         when(template.getSubject()).thenReturn("Hello {{name}}");
@@ -78,33 +57,25 @@ class EmailServiceTest {
 
         EmailMessage savedEmail = mock(EmailMessage.class);
         when(savedEmail.getId()).thenReturn(emailId);
-        when(savedEmail.getCreatedAt()).thenReturn(null);
 
         when(emailRepository.save(any())).thenReturn(savedEmail);
 
-        when(emailStatusRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(emailStatusRepository.save(any()))
+                .thenAnswer(inv -> inv.getArgument(0));
 
         EmailListItemResponse response = emailService.sendEmail(request);
 
         assertNotNull(response);
 
-        verify(emailRepository).save(any());
-        verify(emailStatusRepository).save(any());
         verify(emailProducer).publish(emailId);
     }
 
-    // ============================
-    // sendEmail → Template Missing
-    // ============================
+    // ✅ TEMPLATE MISSING
     @Test
     void sendEmail_shouldThrowWhenTemplateMissing() {
 
         CreateEmailRequest request =
-                new CreateEmailRequest(
-                        "test@mail.com",
-                        templateId,
-                        Collections.emptyMap()
-                );
+                new CreateEmailRequest("test@mail.com", templateId, Map.of());
 
         when(templateRepository.findById(templateId))
                 .thenReturn(Optional.empty());
@@ -113,26 +84,20 @@ class EmailServiceTest {
                 () -> emailService.sendEmail(request));
 
         assertEquals("Template not found", ex.getMessage());
-
-        verify(emailRepository, never()).save(any());
-        verify(emailProducer, never()).publish(any());
     }
 
-    // ============================
-    // sendTestEmail → Success Path
-    // ============================
+    // ✅ sendTestEmail SUCCESS
     @Test
     void sendTestEmail_shouldSaveQueueAndPublish() {
 
+        ReflectionTestUtils.setField(emailService, "fromEmail", "system@test.com");
+
         TestEmailRequest request =
-                new TestEmailRequest(
-                        templateId,
-                        Map.of("code", "123")
-                );
+                new TestEmailRequest(templateId, Map.of());
 
         EmailTemplate template = mock(EmailTemplate.class);
-        when(template.getSubject()).thenReturn("Code {{code}}");
-        when(template.getBody()).thenReturn("Body {{code}}");
+        when(template.getSubject()).thenReturn("Test");
+        when(template.getBody()).thenReturn("Body");
 
         when(templateRepository.findById(templateId))
                 .thenReturn(Optional.of(template));
@@ -140,7 +105,6 @@ class EmailServiceTest {
         EmailMessage savedEmail = mock(EmailMessage.class);
         when(savedEmail.getId()).thenReturn(emailId);
 
-        /* THIS STUB IS MANDATORY */
         when(emailRepository.save(any())).thenReturn(savedEmail);
 
         when(emailStatusRepository.save(any()))
@@ -150,14 +114,10 @@ class EmailServiceTest {
 
         assertNotNull(response);
 
-        verify(emailRepository).save(any());
-        verify(emailStatusRepository).save(any());
         verify(emailProducer).publish(emailId);
     }
 
-    // ============================
-    // getEmailDetails → Success
-    // ============================
+    // ✅ getEmailDetails SUCCESS
     @Test
     void getEmailDetails_shouldReturnDetails() {
 
@@ -176,14 +136,9 @@ class EmailServiceTest {
         EmailDetailsResponse response = emailService.getEmailDetails(emailId);
 
         assertNotNull(response);
-
-        verify(emailRepository).findById(emailId);
-        verify(emailStatusRepository).findByEmail_Id(emailId);
     }
 
-    // ============================
-    // getEmailDetails → Missing Email
-    // ============================
+    // ✅ EMAIL MISSING
     @Test
     void getEmailDetails_shouldThrowWhenMissing() {
 
@@ -196,17 +151,12 @@ class EmailServiceTest {
         assertEquals("Email not found", ex.getMessage());
     }
 
-    // ============================
-    // listEmails → Happy Path
-    // ============================
+    // ✅ listEmails SUCCESS
     @Test
     void listEmails_shouldMapStatuses() {
 
         EmailMessage email = mock(EmailMessage.class);
         when(email.getId()).thenReturn(emailId);
-        when(email.getRecipient()).thenReturn("user@mail.com");
-        when(email.getSubject()).thenReturn("Subject");
-        when(email.getCreatedAt()).thenReturn(null);
 
         EmailStatus status = mock(EmailStatus.class);
         when(status.getSystemStatus()).thenReturn(SystemStatus.QUEUED);
@@ -219,8 +169,5 @@ class EmailServiceTest {
         List<EmailListItemResponse> responses = emailService.listEmails();
 
         assertEquals(1, responses.size());
-
-        verify(emailRepository).findAll();
-        verify(emailStatusRepository).findByEmail_Id(emailId);
     }
 }

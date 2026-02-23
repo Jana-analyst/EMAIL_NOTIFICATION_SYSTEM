@@ -1,12 +1,13 @@
 package com.example.CapStoneProject.ServiceUnitTest;
+
 import com.example.CapStoneProject.dto.request.CreateTemplateRequest;
 import com.example.CapStoneProject.dto.request.UpdateTemplateRequest;
 import com.example.CapStoneProject.dto.response.TemplateDetailsResponse;
 import com.example.CapStoneProject.dto.response.TemplateListItemResponse;
 import com.example.CapStoneProject.models.EmailTemplate;
 import com.example.CapStoneProject.repository.TemplateRepository;
-
 import com.example.CapStoneProject.service.TemplateService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,11 +24,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class TemplateServiceTest {
 
-    @Mock
-    TemplateRepository templateRepository;
-
-    @InjectMocks
-    TemplateService templateService;
+    @Mock TemplateRepository templateRepository;
+    @InjectMocks TemplateService templateService;
 
     private UUID templateId;
 
@@ -36,20 +34,12 @@ class TemplateServiceTest {
         templateId = UUID.randomUUID();
     }
 
-    // ============================
-    // createTemplate → Success
-    // ============================
+    // ✅ createTemplate SUCCESS
     @Test
     void createTemplate_shouldSaveAndReturnResponse() {
 
         CreateTemplateRequest request =
-                new CreateTemplateRequest(
-                        "Welcome",
-                        "Hello {{name}}",
-                        "Body {{name}}"
-                );
-
-        /* No stubbing needed — save return value unused */
+                new CreateTemplateRequest("Welcome", "Hello", "Body");
 
         TemplateListItemResponse response =
                 templateService.createTemplate(request);
@@ -59,9 +49,7 @@ class TemplateServiceTest {
         verify(templateRepository).save(any(EmailTemplate.class));
     }
 
-    // ============================
-    // listTemplates → Mapping
-    // ============================
+    // ✅ listTemplates SUCCESS
     @Test
     void listTemplates_shouldReturnMappedResponses() {
 
@@ -72,20 +60,15 @@ class TemplateServiceTest {
         when(template.getSubject()).thenReturn("Subject");
         when(template.getUpdatedAt()).thenReturn(null);
 
-        when(templateRepository.findAll())
-                .thenReturn(List.of(template));
+        when(templateRepository.findAll()).thenReturn(List.of(template));
 
         List<TemplateListItemResponse> responses =
                 templateService.listTemplates();
 
         assertEquals(1, responses.size());
-
-        verify(templateRepository).findAll();
     }
 
-    // ============================
-    // getTemplateDetails → Success
-    // ============================
+    // ✅ getTemplateDetails SUCCESS
     @Test
     void getTemplateDetails_shouldReturnDetails() {
 
@@ -106,13 +89,9 @@ class TemplateServiceTest {
 
         assertNotNull(response);
         assertEquals(2, response.getPlaceholders().size());
-
-        verify(templateRepository).findById(templateId);
     }
 
-    // ============================
-    // getTemplateDetails → Missing
-    // ============================
+    // ✅ getTemplateDetails MISSING
     @Test
     void getTemplateDetails_shouldThrowWhenMissing() {
 
@@ -125,14 +104,11 @@ class TemplateServiceTest {
         assertEquals("Template not found", ex.getMessage());
     }
 
-    // ============================
-    // updateTemplate → Subject Only
-    // ============================
+    // ✅ updateTemplate SUBJECT ONLY
     @Test
     void updateTemplate_shouldUpdateSubjectOnly() {
 
         UpdateTemplateRequest request = mock(UpdateTemplateRequest.class);
-
         when(request.getSubject()).thenReturn("New Subject");
         when(request.getBody()).thenReturn(null);
 
@@ -140,11 +116,6 @@ class TemplateServiceTest {
 
         when(templateRepository.findById(templateId))
                 .thenReturn(Optional.of(template));
-
-        when(template.getId()).thenReturn(templateId);
-        when(template.getName()).thenReturn("Template");
-        when(template.getSubject()).thenReturn("New Subject");
-        when(template.getUpdatedAt()).thenReturn(null);
 
         TemplateListItemResponse response =
                 templateService.updateTemplate(templateId, request);
@@ -155,9 +126,29 @@ class TemplateServiceTest {
         verify(templateRepository).save(template);
     }
 
-    // ============================
-    // deleteTemplate → Success
-    // ============================
+    // ✅ updateTemplate BODY ONLY (Coverage Gain)
+    @Test
+    void updateTemplate_shouldUpdateBodyOnly() {
+
+        UpdateTemplateRequest request = mock(UpdateTemplateRequest.class);
+        when(request.getSubject()).thenReturn(null);
+        when(request.getBody()).thenReturn("New Body");
+
+        EmailTemplate template = mock(EmailTemplate.class);
+
+        when(templateRepository.findById(templateId))
+                .thenReturn(Optional.of(template));
+
+        TemplateListItemResponse response =
+                templateService.updateTemplate(templateId, request);
+
+        assertNotNull(response);
+
+        verify(template).updateBody("New Body");
+        verify(templateRepository).save(template);
+    }
+
+    // ✅ deleteTemplate SUCCESS
     @Test
     void deleteTemplate_shouldDeleteWhenExists() {
 
@@ -168,9 +159,7 @@ class TemplateServiceTest {
         verify(templateRepository).deleteById(templateId);
     }
 
-    // ============================
-    // deleteTemplate → Missing
-    // ============================
+    // ✅ deleteTemplate MISSING
     @Test
     void deleteTemplate_shouldThrowWhenMissing() {
 

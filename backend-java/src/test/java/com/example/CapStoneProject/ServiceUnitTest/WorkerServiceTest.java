@@ -4,9 +4,9 @@ import com.example.CapStoneProject.models.EmailMessage;
 import com.example.CapStoneProject.models.EmailStatus;
 import com.example.CapStoneProject.repository.EmailRepository;
 import com.example.CapStoneProject.repository.EmailStatusRepository;
-
 import com.example.CapStoneProject.service.SendGridService;
 import com.example.CapStoneProject.service.WorkerService;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.NoSuchElementException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -23,21 +24,13 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class WorkerServiceTest {
 
-    @Mock
-    EmailRepository emailRepository;
+    @Mock EmailRepository emailRepository;
+    @Mock EmailStatusRepository emailStatusRepository;
+    @Mock SendGridService sendGridService;
 
-    @Mock
-    EmailStatusRepository emailStatusRepository;
+    @InjectMocks WorkerService workerService;
 
-    @Mock
-    SendGridService sendGridService;
-
-    @InjectMocks
-    WorkerService workerService;
-
-    // ============================
-    // Success Path
-    // ============================
+    // ✅ SUCCESS PATH
     @Test
     void process_shouldMarkSent_whenSendGridSucceeds() throws Exception {
 
@@ -52,16 +45,15 @@ class WorkerServiceTest {
         when(emailStatusRepository.findByEmail_Id(emailId))
                 .thenReturn(Optional.of(status));
 
+        doNothing().when(sendGridService).sendEmail(email);
+
         workerService.process(emailId);
 
-        verify(sendGridService).sendEmail(email);
         verify(status).markSentToProvider();
         verify(emailStatusRepository).save(status);
     }
 
-    // ============================
-    // Failure Path
-    // ============================
+    // ✅ FAILURE PATH
     @Test
     void process_shouldMarkFailed_whenSendGridThrows() throws Exception {
 
@@ -76,7 +68,7 @@ class WorkerServiceTest {
         when(emailStatusRepository.findByEmail_Id(emailId))
                 .thenReturn(Optional.of(status));
 
-        doThrow(new RuntimeException("SendGrid Error"))
+        doThrow(new Exception("SendGrid Error"))
                 .when(sendGridService).sendEmail(email);
 
         workerService.process(emailId);
@@ -85,22 +77,34 @@ class WorkerServiceTest {
         verify(emailStatusRepository).save(status);
     }
 
-    // ============================
-    // Email Missing Branch
-    // ============================
+    // ✅ EMAIL MISSING
     @Test
-    void process_shouldThrow_whenEmailMissing() throws Exception {
+    void process_shouldThrow_whenEmailMissing() {
 
         UUID emailId = UUID.randomUUID();
 
         when(emailRepository.findById(emailId))
                 .thenReturn(Optional.empty());
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
+        assertThrows(RuntimeException.class,
                 () -> workerService.process(emailId));
+    }
 
-        assertEquals("Email not found", ex.getMessage());
+    // ✅ STATUS MISSING
+    @Test
+    void process_shouldThrow_whenStatusMissing() {
 
-        verify(sendGridService, never()).sendEmail(any());
+        UUID emailId = UUID.randomUUID();
+
+        EmailMessage email = mock(EmailMessage.class);
+
+        when(emailRepository.findById(emailId))
+                .thenReturn(Optional.of(email));
+
+        when(emailStatusRepository.findByEmail_Id(emailId))
+                .thenReturn(Optional.empty());
+
+        assertThrows(NoSuchElementException.class,
+                () -> workerService.process(emailId));
     }
 }

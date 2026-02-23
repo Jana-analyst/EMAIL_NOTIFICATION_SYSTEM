@@ -4,8 +4,8 @@ import com.example.CapStoneProject.models.EmailMessage;
 import com.example.CapStoneProject.models.EmailStatus;
 import com.example.CapStoneProject.enums.ProviderStatus;
 import com.example.CapStoneProject.repository.EmailStatusRepository;
-
 import com.example.CapStoneProject.service.EmailStatusService;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -22,15 +22,10 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class EmailStatusServiceTest {
 
-    @Mock
-    EmailStatusRepository emailStatusRepository;
+    @Mock EmailStatusRepository emailStatusRepository;
+    @InjectMocks EmailStatusService emailStatusService;
 
-    @InjectMocks
-    EmailStatusService emailStatusService;
-
-    // ============================
-    // createQueuedStatus → Success
-    // ============================
+    // ✅ createQueuedStatus SUCCESS
     @Test
     void createQueuedStatus_shouldSaveStatus() {
 
@@ -45,14 +40,11 @@ class EmailStatusServiceTest {
         verify(emailStatusRepository).save(any(EmailStatus.class));
     }
 
-    // ============================
-    // markSentToProvider → Success
-    // ============================
+    // ✅ markSentToProvider SUCCESS
     @Test
     void markSentToProvider_shouldUpdateAndSave() {
 
         UUID emailId = UUID.randomUUID();
-
         EmailStatus status = mock(EmailStatus.class);
 
         when(emailStatusRepository.findByEmail_Id(emailId))
@@ -64,9 +56,7 @@ class EmailStatusServiceTest {
         verify(emailStatusRepository).save(status);
     }
 
-    // ============================
-    // markFailed → Success
-    // ============================
+    // ✅ markFailed SUCCESS
     @Test
     void markFailed_shouldUpdateAndSave() {
 
@@ -82,9 +72,7 @@ class EmailStatusServiceTest {
         verify(emailStatusRepository).save(status);
     }
 
-    // ============================
-    // updateProviderStatus → Success
-    // ============================
+    // ✅ updateProviderStatus SUCCESS
     @Test
     void updateProviderStatus_shouldUpdateAndSave() {
 
@@ -100,9 +88,7 @@ class EmailStatusServiceTest {
         verify(emailStatusRepository).save(status);
     }
 
-    // ============================
-    // loadStatus → Exception Branch
-    // ============================
+    // ✅ markSentToProvider MISSING (already good)
     @Test
     void markSentToProvider_shouldThrowWhenMissing() {
 
@@ -113,6 +99,36 @@ class EmailStatusServiceTest {
 
         RuntimeException ex = assertThrows(RuntimeException.class,
                 () -> emailStatusService.markSentToProvider(emailId));
+
+        assertEquals("EmailStatus not found", ex.getMessage());
+    }
+
+    // ✅ markFailed MISSING (Coverage Booster)
+    @Test
+    void markFailed_shouldThrowWhenMissing() {
+
+        UUID emailId = UUID.randomUUID();
+
+        when(emailStatusRepository.findByEmail_Id(emailId))
+                .thenReturn(Optional.empty());
+
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> emailStatusService.markFailed(emailId, "ERROR"));
+
+        assertEquals("EmailStatus not found", ex.getMessage());
+    }
+
+    // ✅ updateProviderStatus MISSING (Coverage Booster)
+    @Test
+    void updateProviderStatus_shouldThrowWhenMissing() {
+
+        UUID emailId = UUID.randomUUID();
+
+        when(emailStatusRepository.findByEmail_Id(emailId))
+                .thenReturn(Optional.empty());
+
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> emailStatusService.updateProviderStatus(emailId, ProviderStatus.DELIVERED));
 
         assertEquals("EmailStatus not found", ex.getMessage());
     }
