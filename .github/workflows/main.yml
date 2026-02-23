@@ -53,7 +53,9 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           cd backend-java
-          # Maven will automatically use sonarcloud.io if no URL is provided
+          # We explicitly set the host to SonarCloud and provide your Project Key
           ./mvnw sonar:sonar \
+            -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.projectKey=YOUR_PROJECT_KEY \
+            -Dsonar.organization=YOUR_ORGANIZATION_KEY \
             -Dsonar.javascript.lcov.reportPaths=../frontend-react/coverage/lcov.info
