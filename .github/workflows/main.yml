@@ -3,7 +3,7 @@ name: Docker Build and Test
 on:
   push:
     branches: [ "main" ]
-    workflow_dispatch:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -17,21 +17,24 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Build Backend
+      - name: Build and Test Backend
         run: |
           cd backend-java
           chmod +x mvnw
-          ./mvnw clean package -DskipTests
+          # Removed -DskipTests to ensure your JUnit tests run
+          ./mvnw clean verify
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
 
-      - name: Build Frontend
+      - name: Build and Test Frontend
         run: |
           cd frontend-react
           npm install
+          # Runs React tests in CI mode (non-interactive)
+          npm test -- --watchAll=false
           npm run build
 
       - name: Verify Docker Compose
