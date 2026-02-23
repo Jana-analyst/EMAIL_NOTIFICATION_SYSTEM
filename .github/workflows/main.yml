@@ -43,7 +43,6 @@ jobs:
         run: |
           cd frontend-react
           npm install
-          # Runs Vitest and creates the lcov file for Sonar
           npm test -- --watchAll=false || true
           npm run build
 
@@ -52,9 +51,8 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           cd backend-java
-          # Using your specific 'cicd' project key and 'jana-analyst' org
           ./mvnw sonar:sonar \
             -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.projectKey=cicd \
+            -Dsonar.projectKey=Jana-analyst_EMAIL_NOTIFICATION_SYSTEM \
             -Dsonar.organization=jana-analyst \
             -Dsonar.javascript.lcov.reportPaths=../frontend-react/coverage/lcov.info
