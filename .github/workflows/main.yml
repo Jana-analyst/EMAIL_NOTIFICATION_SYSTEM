@@ -15,7 +15,8 @@ jobs:
           - 5672:5672
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0 
 
@@ -43,7 +44,7 @@ jobs:
         run: |
           cd frontend-react
           npm install
-          # Runs tests and ensures the lcov file is generated for Sonar
+          # Runs tests and creates the lcov.info file for Sonar
           npm test -- --watchAll=false || true
           npm run build
 
@@ -52,7 +53,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           cd backend-java
-          # Using your specific project key and organization from SonarCloud
+          # Using your confirmed Project Key and Organization Key
           ./mvnw sonar:sonar \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.projectKey=Jana-analyst_EMAIL_NOTIFICATION_SYSTEM \
